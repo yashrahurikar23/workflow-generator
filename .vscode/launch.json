@@ -1,0 +1,72 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "FastAPI Server",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/backend/main.py",
+      "args": [],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/backend",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/backend",
+        "ENVIRONMENT": "development"
+      },
+      "python": "${workspaceFolder}/backend/.venv/bin/python",
+      "autoReload": {
+        "enable": true
+      },
+      "django": false,
+      "justMyCode": false
+    },
+    {
+      "name": "FastAPI Server (uvicorn)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": ["main:app", "--reload", "--host", "0.0.0.0", "--port", "8003"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/backend",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/backend",
+        "ENVIRONMENT": "development"
+      },
+      "python": "${workspaceFolder}/backend/.venv/bin/python",
+      "django": false,
+      "justMyCode": false
+    },
+    {
+      "name": "Run Tests",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["tests/", "-v", "--cov=app", "--cov-report=term-missing"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/backend",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/backend",
+        "ENVIRONMENT": "testing"
+      },
+      "python": "${workspaceFolder}/backend/.venv/bin/python",
+      "django": false,
+      "justMyCode": false
+    },
+    {
+      "name": "Run Specific Test",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["${file}", "-v"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/backend",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/backend",
+        "ENVIRONMENT": "testing"
+      },
+      "python": "${workspaceFolder}/backend/.venv/bin/python",
+      "django": false,
+      "justMyCode": false
+    }
+  ]
+}

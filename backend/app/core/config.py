@@ -1,5 +1,7 @@
-from pydantic_settings import BaseSettings
 from typing import Optional
+
+from pydantic_settings import BaseSettings
+
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Workflow Generator"
@@ -10,9 +12,22 @@ class Settings(BaseSettings):
     MONGODB_URL: str = "mongodb://localhost:27017"
     DATABASE_NAME: str = "workflow_generator"
     
-    # LLM settings (optional, can be configured later)
+    # LLM settings (multiple provider support)
+    LLM_PROVIDER: str = "template"  # template, openai, aiml, anthropic, local
+    
+    # OpenAI Configuration
     OPENAI_API_KEY: Optional[str] = None
-    LLM_PROVIDER: str = "openai"  # openai, anthropic, local, etc.
+    OPENAI_BASE_URL: str = "https://api.openai.com/v1"
+    OPENAI_MODEL: str = "gpt-4"
+    
+    # AIML API Configuration (https://aimlapi.com)
+    AIML_API_KEY: Optional[str] = None
+    AIML_BASE_URL: str = "https://api.aimlapi.com/v1"
+    AIML_MODEL: str = "gpt-4o"  # Latest GPT-4 Omni via AIML
+    
+    # Anthropic Configuration
+    ANTHROPIC_API_KEY: Optional[str] = None
+    ANTHROPIC_MODEL: str = "claude-3-sonnet-20240229"
     
     class Config:
         env_file = ".env"

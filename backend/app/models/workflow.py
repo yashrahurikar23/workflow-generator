@@ -1,7 +1,9 @@
-from pydantic import BaseModel, Field
-from typing import List, Dict, Any, Optional
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, Field
+
 
 class StepType(str, Enum):
     """Types of workflow steps"""
@@ -76,6 +78,43 @@ class WorkflowExecution(BaseModel):
     # Error handling
     error_message: Optional[str] = None
     error_step: Optional[str] = None
+
+class WorkflowRunSummary(BaseModel):
+    """Summary model for workflow run statistics"""
+    total_runs: int
+    successful_runs: int
+    failed_runs: int
+    running_runs: int
+    average_duration_seconds: Optional[float]
+    last_run_at: Optional[datetime]
+    success_rate: float
+
+class StepExecution(BaseModel):
+    """Detailed execution tracking for individual workflow steps"""
+    step_execution_id: str = Field(..., description="Unique identifier for this step execution")
+    execution_id: str = Field(..., description="Parent workflow execution ID")
+    workflow_id: str = Field(..., description="Parent workflow ID")
+    step_id: str = Field(..., description="ID of the step being executed")
+    step_name: str = Field(..., description="Name of the step")
+    step_type: StepType = Field(..., description="Type of step")
+    
+    # Execution state
+    status: StepStatus = Field(default=StepStatus.PENDING)
+    input_data: Dict[str, Any] = Field(default_factory=dict, description="Input data for this step")
+    output_data: Dict[str, Any] = Field(default_factory=dict, description="Output data from this step")
+    
+    # Timing
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    duration_seconds: Optional[float] = None
+    
+    # Error tracking
+    error_message: Optional[str] = None
+    retry_count: int = Field(default=0)
+    
+    # Metadata
+    logs: List[str] = Field(default_factory=list, description="Execution logs for this step")
+    metrics: Dict[str, Any] = Field(default_factory=dict, description="Performance metrics")
 
 class Workflow(BaseModel):
     """Main workflow model"""

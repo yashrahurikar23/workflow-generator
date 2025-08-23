@@ -1,11 +1,13 @@
-from typing import List, Optional, Dict, Any
-from datetime import datetime
 import uuid
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from app.models.workflow import (StepExecution, Workflow,
+                                 WorkflowCreateRequest, WorkflowExecution,
+                                 WorkflowRunSummary, WorkflowStatus,
+                                 WorkflowStepConfig, WorkflowUpdateRequest)
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from app.models.workflow import (
-    Workflow, WorkflowExecution, WorkflowCreateRequest, 
-    WorkflowUpdateRequest, WorkflowStatus
-)
+
 
 class WorkflowCRUD:
     def __init__(self, database: AsyncIOMotorDatabase):
@@ -210,3 +212,111 @@ class WorkflowCRUD:
             "page": skip // limit + 1,
             "size": limit
         }
+
+    async def create_step_execution(
+        self, 
+        execution_id: str, 
+        step_config: WorkflowStepConfig
+    ) -> StepExecution:
+        """Create a step execution record"""
+        import uuid
+
+        from app.models.workflow import StepExecution
+        
+        step_execution = StepExecution(
+            step_execution_id=str(uuid.uuid4()),
+            execution_id=execution_id,
+            workflow_id=step_config.workflow_id if hasattr(step_config, 'workflow_id') else "",
+            step_id=step_config.step_id,
+            step_name=step_config.name,
+            step_type=step_config.step_type,
+            started_at=datetime.utcnow()
+        )
+        
+        # Convert to dict and insert
+        step_execution_dict = step_execution.model_dump()
+        await self.db.step_executions.insert_one(step_execution_dict)
+        
+        return step_execution
+
+    async def update_step_execution(
+        self, 
+        step_execution_id: str, 
+        update_data: Dict[str, Any]
+    ) -> Optional[StepExecution]:
+        """Update a step execution record"""
+        from app.models.workflow import StepExecution
+        
+        if update_data:
+            result = await self.db.step_executions.update_one(
+                {"step_execution_id": step_execution_id},
+                {"$set": update_data}
+            )
+            
+            if result.modified_count > 0:
+                step_doc = await self.db.step_executions.find_one({"step_execution_id": step_execution_id})
+                if step_doc:
+                    step_doc.pop("_id", None)
+                    return StepExecution(**step_doc)
+        
+        return None
+
+    async def get_execution_steps(self, execution_id: str) -> List[StepExecution]:
+        """Get all step executions for a workflow execution"""
+        from app.models.workflow import StepExecution
+        
+        cursor = self.db.step_executions.find({"execution_id": execution_id}).sort("started_at", 1)
+        steps = []
+        
+        async for doc in cursor:
+            doc.pop("_id", None)
+            steps.append(StepExecution(**doc))
+        
+        return steps
+
+    async def get_workflow_run_summary(self, workflow_id: str) -> WorkflowRunSummary:
+        """Get summary statistics for workflow runs"""
+        from app.models.workflow import WorkflowRunSummary
+
+        # Get all executions for this workflow
+        executions_cursor = self.executions_collection.find({"workflow_id": workflow_id})
+        
+        total_runs = 0
+        successful_runs = 0
+        failed_runs = 0
+        running_runs = 0
+        durations = []
+        last_run_at = None
+        
+        async for execution in executions_cursor:
+            total_runs += 1
+            
+            if execution.get("status") == "completed":
+                successful_runs += 1
+                # Calculate duration if both timestamps exist
+                if execution.get("started_at") and execution.get("completed_at"):
+                    duration = (execution["completed_at"] - execution["started_at"]).total_seconds()
+                    durations.append(duration)
+            elif execution.get("status") == "failed":
+                failed_runs += 1
+            elif execution.get("status") in ["running", "pending"]:
+                running_runs += 1
+            
+            # Track latest run
+            if execution.get("started_at"):
+                if last_run_at is None or execution["started_at"] > last_run_at:
+                    last_run_at = execution["started_at"]
+        
+        # Calculate averages
+        average_duration = sum(durations) / len(durations) if durations else None
+        success_rate = (successful_runs / total_runs) if total_runs > 0 else 0.0
+        
+        return WorkflowRunSummary(
+            total_runs=total_runs,
+            successful_runs=successful_runs,
+            failed_runs=failed_runs,
+            running_runs=running_runs,
+            average_duration_seconds=average_duration,
+            last_run_at=last_run_at,
+            success_rate=success_rate
+        )

@@ -1,0 +1,21 @@
+# Render configuration for monorepo
+services:
+  - type: web
+    name: workflow-backend
+    runtime: python
+    rootDir: backend
+    region: oregon
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: PORT
+        value: "8000"
+      - key: PYTHONPATH
+        value: "/opt/render/project/src"
+      - key: MONGODB_URI
+        sync: false  # This marks it as a secret - set in Render dashboard
+      - key: OPENAI_API_KEY
+        sync: false  # This marks it as a secret - set in Render dashboard

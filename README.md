@@ -81,7 +81,7 @@ A robust, AI-powered workflow generation application with a FastAPI/MongoDB back
    ./run_tests.sh
    
    # Start backend server
-   uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
+   uv run uvicorn main:app --reload --host 0.0.0.0 --port 8003
    
    # Frontend setup (in new terminal)
    cd frontend
@@ -91,9 +91,9 @@ A robust, AI-powered workflow generation application with a FastAPI/MongoDB back
 
 3. **Access the application**:
 
-   - Frontend: <http://localhost:3001>
-   - Backend API: <http://localhost:8000>
-   - API Documentation: <http://localhost:8000/docs>
+   - Frontend: <http://localhost:3003>
+   - Backend API: <http://localhost:8003>
+   - API Documentation: <http://localhost:8003/docs>
 
 ## 🧪 Testing
 
@@ -222,7 +222,7 @@ workflow-generator/
 
 - Check the documentation in the `/notes` folder  
 - Review the Quick Start guide for setup issues
-- Backend API documentation: <http://localhost:8000/docs> when running
+- Backend API documentation: <http://localhost:8003/docs> when running
 - Submit issues for bugs or feature requests
 
 ---
