@@ -1,5 +1,6 @@
 import { Bot, MessageCircle, Send, User } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
+import { API_ENDPOINTS, apiGet, apiPost } from "../config/api";
 
 interface Message {
   message_id: string;
@@ -50,19 +51,10 @@ export function ChatPanel({ className = "" }: ChatPanelProps) {
 
   const createNewThread = async () => {
     try {
-      const response = await fetch(
-        "http://localhost:8004/api/v1/chat/threads",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            title: "Workflow Assistant Chat",
-            metadata: { created_from: "ui" },
-          }),
-        }
-      );
+      const response = await apiPost(API_ENDPOINTS.chatThreads, {
+        title: "Workflow Assistant Chat",
+        metadata: { created_from: "ui" },
+      });
 
       if (response.ok) {
         const thread = await response.json();
@@ -98,17 +90,11 @@ export function ChatPanel({ className = "" }: ChatPanelProps) {
     setMessages((prev) => [...prev, tempUserMessage]);
 
     try {
-      const response = await fetch(
-        `http://localhost:8004/api/v1/chat/threads/${currentThread.thread_id}/chat`,
+      const response = await apiPost(
+        API_ENDPOINTS.chatInThread(currentThread.thread_id),
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            message_content: userMessage,
-            use_context: true,
-          }),
+          message_content: userMessage,
+          use_context: true,
         }
       );
 
@@ -150,8 +136,8 @@ export function ChatPanel({ className = "" }: ChatPanelProps) {
     if (!currentThread) return;
 
     try {
-      const response = await fetch(
-        `http://localhost:8004/api/v1/chat/threads/${currentThread.thread_id}/messages`
+      const response = await apiGet(
+        API_ENDPOINTS.threadMessages(currentThread.thread_id)
       );
 
       if (response.ok) {

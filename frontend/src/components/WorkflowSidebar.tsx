@@ -1,5 +1,6 @@
 import { ChevronRight, Clock, Play, Plus, RefreshCw, Tag } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { API_ENDPOINTS, apiGet } from "../config/api";
 import { mockWorkflowsResponse } from "../services/mockData";
 
 interface WorkflowStep {
@@ -52,14 +53,9 @@ export function WorkflowSidebar({
     try {
       setLoading(true);
 
-      // Try to fetch from API first
+      // Try to fetch from API first using deployed backend
       try {
-        const response = await fetch(
-          "http://localhost:8004/api/v1/workflows/",
-          {
-            timeout: 3000,
-          } as any
-        );
+        const response = await apiGet(API_ENDPOINTS.workflows);
         if (response.ok) {
           const data: WorkflowsResponse = await response.json();
           setWorkflows(data.workflows);

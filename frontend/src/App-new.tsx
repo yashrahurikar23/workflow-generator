@@ -1,14 +1,7 @@
-import { ThemeProvider } from "./components/theme-provider";
-import { WorkflowLibrary } from "./components/WorkflowLibrary";
+import { WorkflowApp } from "./components/WorkflowApp";
 
 function App() {
-  return (
-    <ThemeProvider defaultTheme="light" storageKey="workflow-generator-theme">
-      <div className="min-h-screen bg-gray-50">
-        <WorkflowLibrary />
-      </div>
-    </ThemeProvider>
-  );
+  return <WorkflowApp />;
 }
 
 export default App;

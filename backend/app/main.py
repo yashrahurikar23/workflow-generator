@@ -42,6 +42,11 @@ async def health_check():
     """Health check endpoint"""
     return {"status": "healthy"}
 
+@app.get("/status")
+async def status_check():
+    """Simple status endpoint for testing"""
+    return {"message": "Hello World", "service": "Workflow Generator API", "status": "running"}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

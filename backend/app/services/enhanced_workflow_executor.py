@@ -832,4 +832,58 @@ class EmailAutomationWorkflow(Workflow):
             "node_id": node.node_id,
             "timestamp": datetime.utcnow().isoformat()
         }
-```
+
+class EnhancedVisualWorkflowExecutor:
+    """Enhanced Visual Workflow Executor for managing workflow execution"""
+    
+    def __init__(self, node_registry):
+        self.node_registry = node_registry
+        self.active_executions = {}
+        self.execution_logs = {}
+    
+    async def execute_workflow(self, workflow_id: str, visual_data: dict) -> dict:
+        """Execute a visual workflow"""
+        try:
+            # Mock execution for now
+            execution_id = f"exec_{workflow_id}_{datetime.utcnow().timestamp()}"
+            
+            self.active_executions[execution_id] = {
+                "workflow_id": workflow_id,
+                "status": ExecutionStatus.RUNNING,
+                "started_at": datetime.utcnow().isoformat(),
+                "progress": 0
+            }
+            
+            # Simulate execution completion
+            await asyncio.sleep(0.1)
+            
+            self.active_executions[execution_id].update({
+                "status": ExecutionStatus.COMPLETED,
+                "completed_at": datetime.utcnow().isoformat(),
+                "progress": 100,
+                "result": {"message": "Workflow executed successfully"}
+            })
+            
+            return self.active_executions[execution_id]
+            
+        except Exception as e:
+            return {
+                "status": ExecutionStatus.FAILED,
+                "error": str(e),
+                "workflow_id": workflow_id
+            }
+    
+    async def get_execution_status(self, execution_id: str) -> dict:
+        """Get execution status"""
+        return self.active_executions.get(execution_id, {"status": "not_found"})
+    
+    async def cancel_execution(self, execution_id: str) -> dict:
+        """Cancel workflow execution"""
+        if execution_id in self.active_executions:
+            self.active_executions[execution_id]["status"] = ExecutionStatus.CANCELLED
+            return {"message": "Execution cancelled", "execution_id": execution_id}
+        return {"error": "Execution not found"}
+    
+    async def get_execution_logs(self, execution_id: str) -> list:
+        """Get execution logs"""
+        return self.execution_logs.get(execution_id, [])
