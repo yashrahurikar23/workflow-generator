@@ -36,6 +36,7 @@ interface WorkflowSidebarProps {
   selectedWorkflow: Workflow | null;
   onWorkflowSelect: (workflow: Workflow) => void;
   onCreateNew?: () => void;
+  refreshTrigger?: number; // Add refresh trigger prop
   className?: string;
 }
 
@@ -43,6 +44,7 @@ export function WorkflowSidebar({
   selectedWorkflow,
   onWorkflowSelect,
   onCreateNew,
+  refreshTrigger,
   className = "",
 }: WorkflowSidebarProps) {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
@@ -92,6 +94,13 @@ export function WorkflowSidebar({
   useEffect(() => {
     fetchWorkflows();
   }, [fetchWorkflows]);
+
+  // Refresh workflows when refreshTrigger changes
+  useEffect(() => {
+    if (refreshTrigger !== undefined && refreshTrigger > 0) {
+      fetchWorkflows();
+    }
+  }, [refreshTrigger, fetchWorkflows]);
 
   const getStatusColor = (status: string) => {
     switch (status) {

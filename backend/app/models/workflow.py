@@ -125,6 +125,9 @@ class Workflow(BaseModel):
     # Workflow definition
     steps: List[WorkflowStepConfig] = Field(default_factory=list, description="List of workflow steps")
     
+    # Visual workflow data (for visual workflow editor)
+    visual_data: Optional[Dict[str, Any]] = Field(None, description="Visual workflow data including nodes and connections")
+    
     # Workflow metadata
     status: WorkflowStatus = Field(default=WorkflowStatus.DRAFT, description="Current status of the workflow")
     version: int = Field(default=1, description="Version number of the workflow")
@@ -171,6 +174,8 @@ class WorkflowUpdateRequest(BaseModel):
     generated_by_llm: Optional[bool] = None
     generation_prompt: Optional[str] = None
     llm_provider: Optional[str] = None
+    visual_data: Optional[Dict[str, Any]] = None
+    updated_at: Optional[str] = None
 
 class WorkflowExecuteRequest(BaseModel):
     """Request model for executing a workflow"""

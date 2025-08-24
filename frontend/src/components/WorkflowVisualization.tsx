@@ -12,7 +12,7 @@ import {
   useNodesState,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 
 // Custom node types for different step types
 const stepTypeColors = {
@@ -25,6 +25,13 @@ const stepTypeColors = {
   email: "#EC4899", // Pink
   database: "#84CC16", // Lime
   file_operation: "#6B7280", // Gray
+  // Visual node type mappings
+  email_trigger: "#EC4899", // Pink
+  ai_model: "#06B6D4", // Cyan
+  notification: "#F59E0B", // Yellow
+  approval: "#EF4444", // Red
+  email_sender: "#EC4899", // Pink
+  data_logger: "#84CC16", // Lime
 };
 
 const stepTypeIcons = {
@@ -37,6 +44,13 @@ const stepTypeIcons = {
   email: "📧",
   database: "🗄️",
   file_operation: "📁",
+  // Visual node type mappings
+  email_trigger: "📨",
+  ai_model: "🤖",
+  notification: "🔔",
+  approval: "✋",
+  email_sender: "📤",
+  data_logger: "📊",
 };
 
 interface WorkflowStep {
@@ -69,7 +83,7 @@ interface WorkflowVisualizationProps {
 
 // Custom node component
 const CustomNode = ({ data }: { data: any }) => {
-  const { step, isSelected } = data;
+  const { step, isSelected, sequenceNumber } = data;
   const color =
     stepTypeColors[step.step_type as keyof typeof stepTypeColors] || "#6B7280";
   const icon =
@@ -78,12 +92,23 @@ const CustomNode = ({ data }: { data: any }) => {
   return (
     <div
       className={`
-        px-4 py-3 rounded-lg border-2 bg-white shadow-md min-w-[200px] max-w-[250px]
-        ${isSelected ? "border-blue-500 shadow-lg" : "border-gray-200"}
-        hover:shadow-lg transition-shadow cursor-pointer
+        px-4 py-3 rounded-lg border-2 bg-white shadow-md min-w-[200px] max-w-[250px] relative
+        ${
+          isSelected
+            ? "border-blue-500 shadow-lg ring-2 ring-blue-200"
+            : "border-gray-200"
+        }
+        hover:shadow-lg hover:border-blue-300 transition-all duration-200 cursor-pointer
       `}
       style={{ borderColor: isSelected ? "#3B82F6" : color }}
     >
+      {/* Sequence Number Badge */}
+      {sequenceNumber && (
+        <div className="absolute -top-2 -right-2 w-6 h-6 bg-blue-600 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-md">
+          {sequenceNumber}
+        </div>
+      )}
+
       <div className="flex items-center gap-2 mb-2">
         <span className="text-lg">{icon}</span>
         <span
@@ -117,6 +142,10 @@ const CustomNode = ({ data }: { data: any }) => {
           ⚠️ Conditional
         </div>
       )}
+
+      {/* Visual indicator for connected nodes */}
+      <div className="absolute top-1/2 -left-1 w-2 h-2 bg-gray-400 rounded-full transform -translate-y-1/2 opacity-60"></div>
+      <div className="absolute top-1/2 -right-1 w-2 h-2 bg-gray-400 rounded-full transform -translate-y-1/2 opacity-60"></div>
     </div>
   );
 };
@@ -131,54 +160,180 @@ export function WorkflowVisualization({
 }: WorkflowVisualizationProps) {
   // Convert workflow steps to React Flow nodes and edges
   const { initialNodes, initialEdges } = useMemo(() => {
-    const steps = workflow.steps || [];
+    console.log(
+      "WorkflowVisualization: Recalculating nodes and edges for workflow:",
+      workflow?.workflow_id
+    );
 
-    // Create nodes
-    const nodes: Node[] = steps.map((step, index) => {
-      // Calculate position using a simple grid layout
-      const row = Math.floor(index / 3);
-      const col = index % 3;
-      const x = col * 300 + 50;
-      const y = row * 150 + 50;
+    if (!workflow) {
+      console.log("WorkflowVisualization: No workflow available");
+      return { initialNodes: [], initialEdges: [] };
+    }
 
-      return {
-        id: step.step_id,
-        type: "customNode",
-        position: { x, y },
-        data: {
-          step,
-          isSelected: false,
-          onClick: () => onNodeClick?.(step.step_id, step),
-        },
-        sourcePosition: Position.Right,
-        targetPosition: Position.Left,
-      };
-    });
+    // Check if we have visual_data.nodes (new format) or fallback to steps (old format)
+    let nodes: Node[] = [];
+    let edges: Edge[] = [];
 
-    // Create edges based on dependencies
-    const edges: Edge[] = [];
-    steps.forEach((step) => {
-      step.depends_on.forEach((dependencyId) => {
-        edges.push({
-          id: `${dependencyId}-${step.step_id}`,
-          source: dependencyId,
-          target: step.step_id,
-          type: "smoothstep",
-          animated: true,
-          style: { stroke: "#6B7280", strokeWidth: 2 },
-          markerEnd: {
-            type: "arrowclosed",
-            color: "#6B7280",
+    if (
+      workflow.visual_data &&
+      workflow.visual_data.nodes &&
+      workflow.visual_data.nodes.length > 0
+    ) {
+      console.log(
+        "WorkflowVisualization: Using visual_data with",
+        workflow.visual_data.nodes.length,
+        "nodes for workflow:",
+        workflow.name
+      );
+
+      // Use visual_data format
+      nodes = workflow.visual_data.nodes.map((node, index) => {
+        return {
+          id: node.node_id,
+          type: "customNode",
+          position: node.position || { x: 100, y: 100 },
+          data: {
+            step: {
+              step_id: node.node_id,
+              name: node.name,
+              step_type: node.node_type_id,
+              description: `Node Type: ${node.node_type_id}`,
+              depends_on: [],
+              config: node.config || {},
+            },
+            isSelected: false,
+            sequenceNumber: index + 1, // Add sequence number for visual order
+            onClick: () =>
+              onNodeClick?.(node.node_id, {
+                step_id: node.node_id,
+                name: node.name,
+                step_type: node.node_type_id,
+                description: `Node Type: ${node.node_type_id}`,
+                depends_on: [],
+                config: node.config || {},
+              }),
           },
+          sourcePosition: Position.Right,
+          targetPosition: Position.Left,
+        };
+      });
+
+      // Create edges from connections with enhanced styling
+      if (workflow.visual_data.connections) {
+        edges = workflow.visual_data.connections.map((connection, index) => {
+          // Create sequence numbers based on connection order
+          const sequenceNumber = index + 1;
+
+          return {
+            id: connection.connection_id,
+            source: connection.source_node_id,
+            target: connection.target_node_id,
+            type: "smoothstep",
+            animated: true,
+            style: {
+              stroke: "#2563EB",
+              strokeWidth: 4,
+              strokeDasharray: "0",
+              filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.1))",
+            },
+            markerEnd: {
+              type: "arrowclosed",
+              color: "#2563EB",
+              width: 24,
+              height: 24,
+            },
+            label: `${sequenceNumber}. ${connection.source_output} → ${connection.target_input}`,
+            labelStyle: {
+              fontSize: 12,
+              fill: "#1F2937",
+              fontWeight: 600,
+              background: "white",
+              padding: "4px 8px",
+              borderRadius: "6px",
+              border: "2px solid #2563EB",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            },
+            labelBgPadding: [12, 6] as [number, number],
+            labelBgBorderRadius: 6,
+            labelBgStyle: {
+              fill: "#ffffff",
+              fillOpacity: 0.95,
+              stroke: "#2563EB",
+              strokeWidth: 2,
+            },
+          };
+        });
+      }
+    } else if (workflow.steps && workflow.steps.length > 0) {
+      console.log(
+        "WorkflowVisualization: Using steps format with",
+        workflow.steps.length,
+        "steps for workflow:",
+        workflow.name
+      );
+
+      // Use legacy steps format
+      const steps = workflow.steps;
+
+      // Create nodes
+      nodes = steps.map((step, index) => {
+        // Calculate position using a simple grid layout
+        const row = Math.floor(index / 3);
+        const col = index % 3;
+        const x = col * 300 + 50;
+        const y = row * 150 + 50;
+
+        return {
+          id: step.step_id,
+          type: "customNode",
+          position: { x, y },
+          data: {
+            step,
+            isSelected: false,
+            onClick: () => onNodeClick?.(step.step_id, step),
+          },
+          sourcePosition: Position.Right,
+          targetPosition: Position.Left,
+        };
+      });
+
+      // Create edges based on dependencies
+      steps.forEach((step) => {
+        step.depends_on.forEach((dependencyId) => {
+          edges.push({
+            id: `${dependencyId}-${step.step_id}`,
+            source: dependencyId,
+            target: step.step_id,
+            type: "smoothstep",
+            animated: true,
+            style: { stroke: "#6B7280", strokeWidth: 2 },
+            markerEnd: {
+              type: "arrowclosed",
+              color: "#6B7280",
+            },
+          });
         });
       });
-    });
+    } else {
+      console.log("WorkflowVisualization: No visual data or steps available");
+    }
 
     return { initialNodes: nodes, initialEdges: edges };
   }, [workflow, onNodeClick]);
 
-  const [nodes, , onNodesChange] = useNodesState(initialNodes);
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  // Update nodes and edges when workflow changes
+  useEffect(() => {
+    console.log(
+      "WorkflowVisualization: useEffect triggered, updating nodes and edges"
+    );
+    console.log("WorkflowVisualization: New nodes count:", initialNodes.length);
+    console.log("WorkflowVisualization: New edges count:", initialEdges.length);
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+  }, [initialNodes, initialEdges, setNodes, setEdges]);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),

@@ -1,15 +1,18 @@
-from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, HTTPException, Depends, Query
+import logging
+from typing import Any, Dict, List, Optional
+
 from app.core.database import get_database
 from app.crud.workflow import WorkflowCRUD
-from app.models.workflow import (
-    Workflow, WorkflowExecution, WorkflowCreateRequest, 
-    WorkflowUpdateRequest, WorkflowExecuteRequest, WorkflowGenerateRequest,
-    WorkflowResponse, WorkflowListResponse, WorkflowExecutionResponse,
-    WorkflowStatus
-)
+from app.models.workflow import (Workflow, WorkflowCreateRequest,
+                                 WorkflowExecuteRequest, WorkflowExecution,
+                                 WorkflowExecutionResponse,
+                                 WorkflowGenerateRequest, WorkflowListResponse,
+                                 WorkflowResponse, WorkflowStatus,
+                                 WorkflowUpdateRequest)
 from app.services.workflow_generator import WorkflowGenerator
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 async def get_workflow_crud(db = Depends(get_database)) -> WorkflowCRUD:
@@ -193,3 +196,142 @@ async def generate_workflow(
         return WorkflowResponse(**updated_workflow.model_dump())
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate workflow: {str(e)}")
+
+@router.post("/{workflow_id}/chat", response_model=Dict[str, Any])
+async def chat_with_workflow(
+    workflow_id: str,
+    request_data: Dict[str, Any],
+    crud: WorkflowCRUD = Depends(get_workflow_crud)
+):
+    """Chat with AI to update a workflow using LlamaIndex agents"""
+    try:
+        # Import here to avoid circular imports
+        from app.agents.base_agent import WorkflowAgentOrchestrator
+        from app.agents.workflow_builder import WorkflowBuilderAgent
+        from app.agents.workflow_planner import WorkflowPlannerAgent
+
+        # Get the current workflow
+        workflow = await crud.get_workflow(workflow_id)
+        if not workflow:
+            raise HTTPException(status_code=404, detail="Workflow not found")
+        
+        message = request_data.get("message", "")
+        current_workflow = request_data.get("current_workflow", {})
+        
+        if not message:
+            raise HTTPException(status_code=400, detail="Message is required")
+        
+        # Initialize the agent orchestrator
+        orchestrator = WorkflowAgentOrchestrator()
+        
+        # Register agents
+        planner_agent = WorkflowPlannerAgent()
+        builder_agent = WorkflowBuilderAgent()
+        
+        orchestrator.register_agent(planner_agent)
+        orchestrator.register_agent(builder_agent)
+        
+        # Prepare workflow context
+        workflow_context = {
+            "current_workflow": current_workflow,
+            "workflow_id": workflow_id,
+            "user_message": message
+        }
+        
+        # Process the workflow request using LlamaIndex agents
+        agent_result = await orchestrator.process_workflow_request(message, workflow_context)
+        
+        if agent_result["success"]:
+            # Extract the generated workflow and AI message
+            ai_message = agent_result["ai_message"]
+            generated_workflow = agent_result.get("generated_workflow", {})
+            
+            # Add the user message to the conversation
+            current_messages = current_workflow.get("messages", [])
+            user_message = {
+                "id": f"msg_{int(__import__('time').time() * 1000)}",
+                "role": "user",
+                "content": message,
+                "timestamp": __import__('datetime').datetime.utcnow().isoformat()
+            }
+            
+            # Update messages array
+            updated_messages = current_messages + [user_message, ai_message]
+            
+            # Merge the generated workflow with current workflow
+            updated_workflow = {
+                **current_workflow,
+                "messages": updated_messages
+            }
+            
+            # If we have a new workflow structure, update the visual data
+            if generated_workflow and "visual_data" in generated_workflow:
+                updated_workflow.update({
+                    "visual_data": generated_workflow["visual_data"],
+                    "updated_at": __import__('datetime').datetime.utcnow().isoformat()
+                })
+                
+                # Update workflow in database with new structure
+                workflow_update = WorkflowUpdateRequest(
+                    visual_data=generated_workflow["visual_data"],
+                    updated_at=__import__('datetime').datetime.utcnow().isoformat()
+                )
+                await crud.update_workflow(workflow_id, workflow_update)
+            
+            return {
+                "success": True,
+                "ai_message": ai_message,
+                "updated_workflow": updated_workflow,
+                "workflow_plan": agent_result.get("workflow_plan"),
+                "message": "Workflow chat processed successfully with AI agents"
+            }
+        else:
+            # Agent processing failed, return error but with helpful message
+            error_message = {
+                "id": f"msg_{int(__import__('time').time() * 1000)}",
+                "role": "assistant",
+                "content": f"I encountered an issue while processing your request: {agent_result.get('error', 'Unknown error')}. Please try rephrasing your request or providing more specific details.",
+                "timestamp": __import__('datetime').datetime.utcnow().isoformat()
+            }
+            
+            current_messages = current_workflow.get("messages", [])
+            user_message = {
+                "id": f"msg_{int(__import__('time').time() * 1000) - 1}",
+                "role": "user",
+                "content": message,
+                "timestamp": __import__('datetime').datetime.utcnow().isoformat()
+            }
+            
+            updated_workflow = {
+                **current_workflow,
+                "messages": current_messages + [user_message, error_message]
+            }
+            
+            return {
+                "success": False,
+                "ai_message": error_message,
+                "updated_workflow": updated_workflow,
+                "error": agent_result.get("error"),
+                "message": "Workflow chat processing encountered an error"
+            }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Chat endpoint error: {str(e)}")
+        
+        # Create error response
+        error_message = {
+            "id": f"msg_{int(__import__('time').time() * 1000)}",
+            "role": "assistant",
+            "content": f"I'm sorry, I encountered a technical error while processing your request. Please try again or contact support if the issue persists. Error: {str(e)}",
+            "timestamp": __import__('datetime').datetime.utcnow().isoformat()
+        }
+        
+        return {
+            "success": False,
+            "ai_message": error_message,
+            "updated_workflow": current_workflow,
+            "error": str(e),
+            "message": "Technical error occurred during chat processing"
+        }

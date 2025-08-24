@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     # Database
     MONGODB_URL: str = "mongodb://localhost:27017"
     DATABASE_NAME: str = "workflow_generator"
+    USE_MOCK_DATABASE: bool = False  # Set to True to use mock database for development
+    
+    # Environment
+    ENVIRONMENT: str = "development"
     
     # LLM settings (multiple provider support)
     LLM_PROVIDER: str = "template"  # template, openai, aiml, anthropic, local

@@ -53,13 +53,17 @@ interface WorkflowExecution {
 interface WorkflowExecutorProps {
   workflow: Workflow;
   onExecutionComplete?: (execution: WorkflowExecution) => void;
+  onExecutionStart?: () => void;
   className?: string;
+  showLogs?: boolean;
 }
 
 export function WorkflowExecutor({
   workflow,
   onExecutionComplete,
+  onExecutionStart,
   className = "",
+  showLogs = false,
 }: WorkflowExecutorProps) {
   const [currentExecution, setCurrentExecution] =
     useState<WorkflowExecution | null>(null);
@@ -100,6 +104,7 @@ export function WorkflowExecutor({
     if (isExecuting) return;
 
     setIsExecuting(true);
+    onExecutionStart?.(); // Notify parent that execution started
 
     // Create initial execution object
     const execution: WorkflowExecution = {
@@ -257,51 +262,53 @@ export function WorkflowExecutor({
     <div
       className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 ${className}`}
     >
-      {/* Header */}
-      <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Execute Workflow
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              {workflow.name}
-            </p>
-          </div>
-          <div className="flex space-x-2">
-            {!isExecuting && !currentExecution && (
-              <button
-                onClick={executeWorkflow}
-                disabled={needsUrlInput && !inputData.url}
-                className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                <Play className="h-4 w-4 mr-2" />
-                Execute
-              </button>
-            )}
-            {isExecuting && (
-              <button
-                onClick={stopExecution}
-                className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-              >
-                <Square className="h-4 w-4 mr-2" />
-                Stop
-              </button>
-            )}
-            {currentExecution && !isExecuting && (
-              <button
-                onClick={resetExecution}
-                className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-              >
-                Reset
-              </button>
-            )}
+      {/* Header - Only show if not in logs mode */}
+      {!showLogs && (
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Execute Workflow
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {workflow.name}
+              </p>
+            </div>
+            <div className="flex space-x-2">
+              {!isExecuting && !currentExecution && (
+                <button
+                  onClick={executeWorkflow}
+                  disabled={needsUrlInput && !inputData.url}
+                  className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  <Play className="h-4 w-4 mr-2" />
+                  Execute
+                </button>
+              )}
+              {isExecuting && (
+                <button
+                  onClick={stopExecution}
+                  className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                >
+                  <Square className="h-4 w-4 mr-2" />
+                  Stop
+                </button>
+              )}
+              {currentExecution && !isExecuting && (
+                <button
+                  onClick={resetExecution}
+                  className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Input Configuration */}
-      {needsUrlInput && !currentExecution && (
+      {/* Input Configuration - Only show if not in logs mode */}
+      {!showLogs && needsUrlInput && !currentExecution && (
         <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
           <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
             Workflow Input

@@ -164,7 +164,7 @@ export function WorkflowLibraryUpdated() {
         <CreateWorkflowModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
-          onCreate={handleCreateWorkflow}
+          onCreateWorkflow={handleCreateWorkflow}
         />
       </div>
     </ThemeProvider>

@@ -16,6 +16,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",  # React dev server
+        "http://localhost:3003",  # React dev server
         "https://*.vercel.app",   # Vercel deployments
         "https://*.netlify.app",  # Netlify deployments
         "https://your-app-domain.com"  # Your custom domain
